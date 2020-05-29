@@ -2,7 +2,7 @@ import tkinter as tk
 
 
 class ScrollFrame(tk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, height):
         super().__init__(parent)
 
         self.canvas = tk.Canvas(self, borderwidth=0, background="#ffffff")
@@ -12,7 +12,7 @@ class ScrollFrame(tk.Frame):
 
         self.vsb.pack(side="right", fill="y")
         self.canvas.pack(side="left", fill="both", expand=True)
-        self.canvas.configure(height=430)
+        self.canvas.configure(height=height)
         self.canvas_window = self.canvas.create_window((4, 4),
                                                        window=self.viewPort,
                                                        anchor="nw",
