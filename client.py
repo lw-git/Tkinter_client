@@ -40,11 +40,26 @@ class Application(tk.Frame):
 
         self.form_frame.pack()
 
-        #-------------Status Frame--------------------
+        # -------------Status Frame--------------------
         self.status_frame = tk.Frame(root, bg='blue')
         self.status_label = tk.Label(self.status_frame, text='Status:', bd=1, bg='blue', fg='white', font='Helvetica 12 bold')
         self.status_label.pack(side='left', fill='x')
         self.status_frame.pack(side='bottom', fill='x')
+
+    def get_status(self, r):
+        error = False
+        if hasattr(r, 'status_code'):
+            if r.status_code > 204:
+                error = True
+        else:
+            error = True
+
+        if not error:
+            self.status_label.config(text='Status: ok', bg='blue')
+            self.status_frame.config(bg='blue')
+        else:
+            self.status_label.config(text='Status: error', bg='red')
+            self.status_frame.config(bg='red')
 
 
 if __name__ == '__main__':
