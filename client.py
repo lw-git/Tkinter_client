@@ -1,5 +1,6 @@
 import tkinter as tk
 import tkinter.font as tkFont
+from components.widgets import ScrollFrame, TagButton, TagMessage
 
 
 class Application(tk.Frame):
