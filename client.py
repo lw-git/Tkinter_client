@@ -2,6 +2,8 @@ import tkinter as tk
 import tkinter.font as tkFont
 from components.widgets import ScrollFrame, TagButton, TagMessage
 import requests
+import time
+import threading
 
 
 class Application(tk.Frame):
@@ -52,6 +54,13 @@ class Application(tk.Frame):
         self.scrollFrame = ScrollFrame(root, height=430)
         self.after(500, self.get_todos)
 
+        # -------------Preloader---------------------
+        self.preloader = tk.Frame(root)
+        self.label = tk.Label(self.preloader)
+        self.label.pack()
+        self.frames = [tk.PhotoImage(file='images/spinner.gif',
+                            format='gif -index %i' % (i)) for i in range(1, 12)]
+
         # -------------Status Frame--------------------
         self.status_frame = tk.Frame(root, bg='blue')
         self.status_label = tk.Label(self.status_frame, text='Status:',
@@ -59,6 +68,23 @@ class Application(tk.Frame):
                                      font='Helvetica 12 bold')
         self.status_label.pack(side='left', fill='x')
         self.status_frame.pack(side='bottom', fill='x')
+
+    def toggle_spinner(self):
+        self.flag = not self.flag
+        if self.flag:
+            threading.Thread(target=self.spinner).start()
+            self.scrollFrame.forget()
+            self.preloader.pack()
+        else:
+            self.preloader.forget()
+            self.scrollFrame.pack()
+
+    def spinner(self, ind=1):
+        while self.flag:
+            frame = self.frames[ind % len(self.frames)]
+            ind += 1
+            self.label.configure(image=frame)
+            time.sleep(0.1)
 
     def get_status(self, response):
         error = False
@@ -76,6 +102,7 @@ class Application(tk.Frame):
             self.status_frame.config(bg='red')
 
     def get_todos(self):
+        self.toggle_spinner()
         response = 'Error'
         try:
             response = requests.get(self.endpoint)
@@ -103,6 +130,8 @@ class Application(tk.Frame):
                 task.pack(fill='x')
 
             self.scrollFrame.pack()
+        finally:
+            self.toggle_spinner()
 
 
 if __name__ == '__main__':
