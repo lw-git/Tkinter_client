@@ -17,6 +17,7 @@ class Application(tk.Frame):
         self.endpoint = 'http://127.0.0.1:8000/api/'
         self.todos = None
         self.todo = tk.StringVar()
+        self.todo.trace("w", lambda *args: self.character_limit())
 
         # ------------Fonts---------------
         self.normal_Font = tkFont.Font(family="Helvetica", size=15, overstrike=0)
@@ -134,6 +135,10 @@ class Application(tk.Frame):
             self.scrollFrame.pack()
         finally:
             self.toggle_spinner()
+
+    def character_limit(self):
+        if len(self.todo.get()) > 200:
+            self.todo.set(self.todo.get()[:200])
 
     def create_todo(self):
         self.btn_create.config(state='disabled')
