@@ -16,6 +16,7 @@ class Application(tk.Frame):
         self.todo_id = None
         self.endpoint = 'http://127.0.0.1:8000/api/'
         self.todos = None
+        self.todo = tk.StringVar()
 
         # ------------Fonts---------------
         self.normal_Font = tkFont.Font(family="Helvetica", size=15, overstrike=0)
@@ -41,10 +42,11 @@ class Application(tk.Frame):
         # ---------Form Frame--------------------
         self.form_frame = tk.Frame(root)
         self.e1 = tk.Entry(self.form_frame, width=26, bg='lightblue',
-                           relief=tk.SUNKEN, bd=10, font=self.normal_Font)
+                           textvariable=self.todo, relief=tk.SUNKEN,
+                           bd=10, font=self.normal_Font)
         self.e1.pack(side='left', fill='x')
         self.btn_create = tk.Button(self.form_frame, text='Create',
-                                    command=None, bg='lightblue',
+                                    command=self.create_todo, bg='lightblue',
                                     relief=tk.RAISED, bd=4,
                                     font=self.normal_Font)
         self.btn_create.pack(side='right')
@@ -132,6 +134,27 @@ class Application(tk.Frame):
             self.scrollFrame.pack()
         finally:
             self.toggle_spinner()
+
+    def create_todo(self):
+        self.btn_create.config(state='disabled')
+        data = {
+            'title': self.todo.get(),
+            'completed': bool(self.check.get())
+        }
+        if self.todo.get() != '':
+            response = 'Error'
+            try:
+                response = requests.post(self.endpoint + 'create/', data)
+            except IOError:
+                self.get_status(response)
+            else:
+                self.get_status(response)
+                self.get_todos()
+            finally:
+                self.btn_create.config(state='normal')
+                self.todo.set('')
+        else:
+            self.btn_create.config(state='normal')
 
 
 if __name__ == '__main__':
