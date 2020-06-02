@@ -126,6 +126,7 @@ class Application(tk.Frame):
                     text.configure(font=self.strike_Font)
                 else:
                     text.configure(font=self.normal_Font)
+                text.bind('<Button-1>', self.prepare_update)
                 text.pack(side='left', fill='x')
                 btn = TagButton(task, text='X', tag=i, bg='black',
                                 fg='white', font='bold')
@@ -160,6 +161,43 @@ class Application(tk.Frame):
                 self.todo.set('')
         else:
             self.btn_create.config(state='normal')
+
+    def prepare_update(self, e):
+        updated_todo = self.todos[e.widget.tag]
+        self.check.set(updated_todo['completed'])
+        self.todo.set(updated_todo['title'])
+        self.todo_id = (updated_todo['id'])
+        self.btn_create.config(text='Update', command=self.update_todo)
+
+        for i in self.scrollFrame.viewPort.winfo_children():
+            for j in i.winfo_children():
+                if isinstance(j, TagButton):
+                    j.forget()
+
+    def update_todo(self):
+        data = {
+            'title': self.todo.get(),
+            'completed': bool(self.check.get())
+        }
+        if self.todo.get() != '':
+            response = 'Error'
+            try:
+                response = requests.put(
+                            self.endpoint + f'{self.todo_id}/update/',
+                            data)
+            except IOError:
+                self.get_status(response)
+            else:
+                self.get_status(response)
+                self.get_todos()
+                self.btn_create.config(text='Create', command=self.create_todo)
+                self.check.set(0)
+                self.todo.set('')
+
+        for i in self.scrollFrame.viewPort.winfo_children():
+            for j in i.winfo_children():
+                if isinstance(j, TagButton):
+                    j.pack()
 
 
 if __name__ == '__main__':
