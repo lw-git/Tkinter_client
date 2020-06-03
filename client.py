@@ -130,6 +130,7 @@ class Application(tk.Frame):
                 text.pack(side='left', fill='x')
                 btn = TagButton(task, text='X', tag=i, bg='black',
                                 fg='white', font='bold')
+                btn.bind('<Button-1>', self.delete_todo)
                 btn.pack(side='right')
                 task.pack(fill='x')
 
@@ -198,6 +199,19 @@ class Application(tk.Frame):
             for j in i.winfo_children():
                 if isinstance(j, TagButton):
                     j.pack()
+
+    def delete_todo(self, e):
+        self.todo_id = self.todos[e.widget.tag]['id']
+        if self.todo_id:
+            response = 'Error'
+            try:
+                response = requests.delete(
+                    self.endpoint + f'{self.todo_id}/delete/')
+            except IOError:
+                self.get_status(response)
+            else:
+                self.get_status(response)
+                self.get_todos()
 
 
 if __name__ == '__main__':
