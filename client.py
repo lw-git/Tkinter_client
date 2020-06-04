@@ -55,7 +55,7 @@ class Application(tk.Frame):
 
         # --------------Load todos---------------------
         self.scrollFrame = ScrollFrame(root, height=430)
-        self.after(500, self.get_todos)
+        self.after(500, self.start_get_todos)
 
         # -------------Preloader---------------------
         self.preloader = tk.Frame(root)
@@ -103,6 +103,9 @@ class Application(tk.Frame):
         else:
             self.status_label.config(text='Status: error', bg='red')
             self.status_frame.config(bg='red')
+
+    def start_get_todos(self):
+        threading.Thread(target=self.get_todos).start()
 
     def get_todos(self):
         self.toggle_spinner()
@@ -156,7 +159,7 @@ class Application(tk.Frame):
                 self.get_status(response)
             else:
                 self.get_status(response)
-                self.get_todos()
+                self.start_get_todos()
             finally:
                 self.btn_create.config(state='normal')
                 self.todo.set('')
@@ -190,7 +193,7 @@ class Application(tk.Frame):
                 self.get_status(response)
             else:
                 self.get_status(response)
-                self.get_todos()
+                self.start_get_todos()
                 self.btn_create.config(text='Create', command=self.create_todo)
                 self.check.set(0)
                 self.todo.set('')
@@ -211,7 +214,7 @@ class Application(tk.Frame):
                 self.get_status(response)
             else:
                 self.get_status(response)
-                self.get_todos()
+                self.start_get_todos()
 
 
 if __name__ == '__main__':
