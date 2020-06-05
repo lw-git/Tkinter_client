@@ -1,6 +1,7 @@
 import tkinter as tk
 import tkinter.font as tkFont
 from components.widgets import ScrollFrame, TagButton, TagMessage
+from components.utils import SaveThread
 import requests
 import time
 import threading
