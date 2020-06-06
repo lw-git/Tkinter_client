@@ -19,6 +19,7 @@ class Application(tk.Frame):
         self.todos = None
         self.todo = tk.StringVar()
         self.todo.trace("w", lambda *args: self.character_limit())
+        self.thread_flag = False
 
         # ------------Fonts---------------
         self.normal_Font = tkFont.Font(family="Helvetica", size=15, overstrike=0)
@@ -104,6 +105,28 @@ class Application(tk.Frame):
         else:
             self.status_label.config(text='Status: error', bg='red')
             self.status_frame.config(bg='red')
+
+    def on_thread_finished(self, data):
+        self.thread_flag = True
+
+    def do_request(self, method='get', query='', data={}):
+        params = {
+            'method': method,
+            'query': query,
+            'data': data,
+            'num': self.endpoint + query
+        }
+        t = SaveThread(self.on_thread_finished,
+                       target=self.request_thread,
+                       kwargs=params)
+        t.start()
+
+    def request_thread(self, **kwargs):
+        r = requests.request(kwargs['method'],
+                             self.endpoint + kwargs['query'],
+                             data=kwargs.get('data'))
+        if len(r.text) > 0:
+            self.todos = r.json()
 
     def start_get_todos(self):
         threading.Thread(target=self.get_todos).start()
