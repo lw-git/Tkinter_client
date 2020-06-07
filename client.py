@@ -38,20 +38,19 @@ class Application(tk.Frame):
         # ----------Check Frame-----------------
         self.check_frame = tk.Frame(root)
         self.check = tk.IntVar()
-        self.c1 = tk.Checkbutton(self.check_frame, text='Completed',
-                                 variable=self.check, relief=tk.FLAT,
-                                 font='12')
-        self.c1.pack(side='left', fill='x')
+        tk.Checkbutton(self.check_frame, text='Completed',
+                       variable=self.check, relief=tk.FLAT,
+                       font='12').pack(side='left', fill='x')
         self.check_frame.pack(fill='x')
 
         # ---------Form Frame--------------------
         self.form_frame = tk.Frame(root)
-        self.e1 = tk.Entry(self.form_frame, width=26, bg='lightblue',
-                           textvariable=self.todo, relief=tk.SUNKEN,
-                           bd=10, font=self.normal_Font)
-        self.e1.pack(side='left', fill='x')
+        tk.Entry(self.form_frame, width=26, bg='lightblue',
+                 textvariable=self.todo, relief=tk.SUNKEN,
+                 bd=10, font=self.normal_Font).pack(side='left', fill='x')
         self.btn_create = tk.Button(self.form_frame, text='Create',
-                                    command=self.start_create_todo, bg='lightblue',
+                                    command=self.start_create_todo,
+                                    bg='lightblue',
                                     relief=tk.RAISED, bd=4,
                                     font=self.normal_Font)
         self.btn_create.pack(side='right')
