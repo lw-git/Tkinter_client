@@ -21,6 +21,7 @@ class Application(tk.Frame):
         self.todo.trace("w", lambda *args: self.character_limit())
         self.thread_flag = False
         self.current_todos = None
+        self.status = None
 
         # ------------Fonts---------------
         self.normal_Font = tkFont.Font(family="Helvetica", size=15, overstrike=0)
@@ -93,12 +94,12 @@ class Application(tk.Frame):
             self.label.configure(image=frame)
             time.sleep(0.1)
 
-    def get_status(self, response):
+    def get_status(self, status):
         error = False
-        if hasattr(response, 'status_code'):
-            if response.status_code > 204:
-                error = True
-        else:
+
+        if status is None:
+            error = True
+        elif status > 204:
             error = True
 
         if not error:
@@ -124,7 +125,7 @@ class Application(tk.Frame):
                 if isinstance(j, TagButton):
                     j.forget()
 
-    # ----------------Thread methods---------------------------------
+    # ----------------------Thread methods------------------------
     def do_request(self, method='get', query='', data={}):
         params = {
             'method': method,
@@ -140,11 +141,14 @@ class Application(tk.Frame):
         response = requests.request(kwargs['method'],
                                     self.endpoint + kwargs['query'],
                                     data=kwargs.get('data'))
+        self.status = response.status_code
         if len(response.text) > 0:
             self.todos = response.json()
 
     def on_thread_finished(self, data):
         self.thread_flag = True
+        self.get_status(self.status)
+        self.status = None
 
     # ----------------Starts for CRUD methods---------------------
     def start_get_todos(self):
