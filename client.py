@@ -20,6 +20,7 @@ class Application(tk.Frame):
         self.todo = tk.StringVar()
         self.todo.trace("w", lambda *args: self.character_limit())
         self.thread_flag = False
+        self.current_todos = None
 
         # ------------Fonts---------------
         self.normal_Font = tkFont.Font(family="Helvetica", size=15, overstrike=0)
@@ -49,7 +50,7 @@ class Application(tk.Frame):
                            bd=10, font=self.normal_Font)
         self.e1.pack(side='left', fill='x')
         self.btn_create = tk.Button(self.form_frame, text='Create',
-                                    command=self.create_todo, bg='lightblue',
+                                    command=self.start_create_todo, bg='lightblue',
                                     relief=tk.RAISED, bd=4,
                                     font=self.normal_Font)
         self.btn_create.pack(side='right')
@@ -74,6 +75,7 @@ class Application(tk.Frame):
         self.status_label.pack(side='left', fill='x')
         self.status_frame.pack(side='bottom', fill='x')
 
+    # -----------------Service methods-------------------------
     def toggle_spinner(self):
         self.flag = not self.flag
         if self.flag:
@@ -106,9 +108,23 @@ class Application(tk.Frame):
             self.status_label.config(text='Status: error', bg='red')
             self.status_frame.config(bg='red')
 
-    def on_thread_finished(self, data):
-        self.thread_flag = True
+    def character_limit(self):
+        if len(self.todo.get()) > 200:
+            self.todo.set(self.todo.get()[:200])
 
+    def prepare_update(self, e):
+        updated_todo = self.current_todos[e.widget.tag]
+        self.check.set(updated_todo['completed'])
+        self.todo.set(updated_todo['title'])
+        self.todo_id = (updated_todo['id'])
+        self.btn_create.config(text='Update', command=self.start_update_todo)
+
+        for i in self.scrollFrame.viewPort.winfo_children():
+            for j in i.winfo_children():
+                if isinstance(j, TagButton):
+                    j.forget()
+
+    # ----------------Thread methods---------------------------------
     def do_request(self, method='get', query='', data={}):
         params = {
             'method': method,
@@ -116,34 +132,48 @@ class Application(tk.Frame):
             'data': data,
             'num': self.endpoint + query
         }
-        t = SaveThread(self.on_thread_finished,
-                       target=self.request_thread,
-                       kwargs=params)
-        t.start()
+        SaveThread(self.on_thread_finished,
+                   target=self.request_thread,
+                   kwargs=params).start()
 
     def request_thread(self, **kwargs):
-        r = requests.request(kwargs['method'],
-                             self.endpoint + kwargs['query'],
-                             data=kwargs.get('data'))
-        if len(r.text) > 0:
-            self.todos = r.json()
+        response = requests.request(kwargs['method'],
+                                    self.endpoint + kwargs['query'],
+                                    data=kwargs.get('data'))
+        if len(response.text) > 0:
+            self.todos = response.json()
 
+    def on_thread_finished(self, data):
+        self.thread_flag = True
+
+    # ----------------Starts for CRUD methods---------------------
     def start_get_todos(self):
         threading.Thread(target=self.get_todos).start()
 
+    def start_create_todo(self):
+        if self.todo.get() != '':
+            threading.Thread(target=self.create_todo).start()
+
+    def start_update_todo(self):
+        if self.todo.get() != '':
+            threading.Thread(target=self.update_todo).start()
+
+    def start_delete_todo(self, e):
+        threading.Thread(target=self.delete_todo, args=[e]).start()
+
+    # ---------------------CRUD methods---------------------------
     def get_todos(self):
         self.toggle_spinner()
-        response = 'Error'
-        try:
-            response = requests.get(self.endpoint)
-            self.todos = response.json()
-        except IOError:
-            self.get_status(response)
-        else:
-            self.get_status(response)
+        self.do_request('get')
+
+        while True:
+            if self.thread_flag:
+                self.thread_flag = False
+                break
+
+        if self.todos:
             for widget in self.scrollFrame.viewPort.winfo_children():
                 widget.destroy()
-
             for i, todo in enumerate(self.todos):
                 task = tk.Frame(self.scrollFrame.viewPort, bg='lightblue',
                                 relief=tk.SUNKEN, bd=10)
@@ -157,70 +187,54 @@ class Application(tk.Frame):
                 text.pack(side='left', fill='x')
                 btn = TagButton(task, text='X', tag=i, bg='black',
                                 fg='white', font='bold')
-                btn.bind('<Button-1>', self.delete_todo)
+                btn.bind('<Button-1>', lambda e: self.start_delete_todo(e))
                 btn.pack(side='right')
                 task.pack(fill='x')
 
-            self.scrollFrame.pack()
-        finally:
-            self.toggle_spinner()
+            self.current_todos = self.todos
+            self.todos = None
 
-    def character_limit(self):
-        if len(self.todo.get()) > 200:
-            self.todo.set(self.todo.get()[:200])
+        self.scrollFrame.pack()
+        self.toggle_spinner()
 
     def create_todo(self):
-        self.btn_create.config(state='disabled')
+        self.toggle_spinner()
         data = {
             'title': self.todo.get(),
             'completed': bool(self.check.get())
         }
-        if self.todo.get() != '':
-            response = 'Error'
-            try:
-                response = requests.post(self.endpoint + 'create/', data)
-            except IOError:
-                self.get_status(response)
-            else:
-                self.get_status(response)
-                self.start_get_todos()
-            finally:
-                self.btn_create.config(state='normal')
-                self.todo.set('')
-        else:
-            self.btn_create.config(state='normal')
+        self.do_request('post', query='create/', data=data)
 
-    def prepare_update(self, e):
-        updated_todo = self.todos[e.widget.tag]
-        self.check.set(updated_todo['completed'])
-        self.todo.set(updated_todo['title'])
-        self.todo_id = (updated_todo['id'])
-        self.btn_create.config(text='Update', command=self.update_todo)
+        while True:
+            if self.thread_flag:
+                self.thread_flag = False
+                break
 
-        for i in self.scrollFrame.viewPort.winfo_children():
-            for j in i.winfo_children():
-                if isinstance(j, TagButton):
-                    j.forget()
+        self.todo.set('')
+        self.toggle_spinner()
+
+        if self.todos:
+            self.get_todos()
 
     def update_todo(self):
+        self.toggle_spinner()
         data = {
             'title': self.todo.get(),
             'completed': bool(self.check.get())
         }
-        if self.todo.get() != '':
-            response = 'Error'
-            try:
-                response = requests.put(
-                            self.endpoint + f'{self.todo_id}/update/',
-                            data)
-            except IOError:
-                self.get_status(response)
-            else:
-                self.get_status(response)
-                self.start_get_todos()
-                self.btn_create.config(text='Create', command=self.create_todo)
-                self.check.set(0)
-                self.todo.set('')
+        self.do_request('put', query=f'{self.todo_id}/update/', data=data)
+
+        while True:
+            if self.thread_flag:
+                self.thread_flag = False
+                break
+
+        self.todo.set('')
+        self.check.set(0)
+        self.btn_create.config(text='Create', command=self.start_create_todo)
+
+        self.toggle_spinner()
+        self.get_todos()
 
         for i in self.scrollFrame.viewPort.winfo_children():
             for j in i.winfo_children():
@@ -228,17 +242,17 @@ class Application(tk.Frame):
                     j.pack()
 
     def delete_todo(self, e):
-        self.todo_id = self.todos[e.widget.tag]['id']
-        if self.todo_id:
-            response = 'Error'
-            try:
-                response = requests.delete(
-                    self.endpoint + f'{self.todo_id}/delete/')
-            except IOError:
-                self.get_status(response)
-            else:
-                self.get_status(response)
-                self.start_get_todos()
+        self.toggle_spinner()
+        self.todo_id = self.current_todos[e.widget.tag]['id']
+        self.do_request('delete', query=f'{self.todo_id}/delete/')
+
+        while True:
+            if self.thread_flag:
+                self.thread_flag = False
+                break
+
+        self.toggle_spinner()
+        self.get_todos()
 
 
 if __name__ == '__main__':
