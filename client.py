@@ -49,16 +49,15 @@ class Application(tk.Frame):
                  textvariable=self.todo, relief=tk.SUNKEN,
                  bd=10, font=self.normal_Font).pack(side='left', fill='x')
         self.btn_create = tk.Button(self.form_frame, text='Create',
-                                    command=self.start_create_todo,
+                                    command=lambda: self.start(test=True, method='create_todo'),
                                     bg='lightblue',
                                     relief=tk.RAISED, bd=4,
                                     font=self.normal_Font)
         self.btn_create.pack(side='right')
         self.form_frame.pack()
 
-        # --------------Load todos---------------------
+        # -------------Scrollable frame--------------
         self.scrollFrame = ScrollFrame(root, height=430)
-        self.after(500, self.start_get_todos)
 
         # -------------Preloader---------------------
         self.preloader = tk.Frame(root)
@@ -74,6 +73,9 @@ class Application(tk.Frame):
                                      font='Helvetica 12 bold')
         self.status_label.pack(side='left', fill='x')
         self.status_frame.pack(side='bottom', fill='x')
+
+        # --------------Load todos---------------------
+        self.after(500, self.start(method='get_todos'))
 
     # -----------------Service methods-------------------------
     def toggle_spinner(self):
@@ -117,12 +119,24 @@ class Application(tk.Frame):
         self.check.set(updated_todo['completed'])
         self.todo.set(updated_todo['title'])
         self.todo_id = (updated_todo['id'])
-        self.btn_create.config(text='Update', command=self.start_update_todo)
+        self.btn_create.config(text='Update', command=lambda: self.start(test=True, method='update_todo'))
 
         for i in self.scrollFrame.viewPort.winfo_children():
             for j in i.winfo_children():
                 if isinstance(j, TagButton):
                     j.forget()
+
+    # ----------------Start for CRUD methods---------------------
+    def start(self, test=False, method='get_todos', e=None):
+        if test:
+            if self.todo.get() != '':
+                threading.Thread(target=getattr(self, method)).start()
+        else:
+            if e:
+                threading.Thread(target=getattr(self, method),
+                                 args=[e]).start()
+            else:
+                threading.Thread(target=getattr(self, method)).start()
 
     # ----------------------Thread methods------------------------
     def do_request(self, method='get', query='', data={}):
@@ -148,21 +162,6 @@ class Application(tk.Frame):
         self.thread_flag = True
         self.get_status(self.status)
         self.status = None
-
-    # ----------------Starts for CRUD methods---------------------
-    def start_get_todos(self):
-        threading.Thread(target=self.get_todos).start()
-
-    def start_create_todo(self):
-        if self.todo.get() != '':
-            threading.Thread(target=self.create_todo).start()
-
-    def start_update_todo(self):
-        if self.todo.get() != '':
-            threading.Thread(target=self.update_todo).start()
-
-    def start_delete_todo(self, e):
-        threading.Thread(target=self.delete_todo, args=[e]).start()
 
     # ---------------------CRUD methods---------------------------
     def get_todos(self):
@@ -190,7 +189,7 @@ class Application(tk.Frame):
                 text.pack(side='left', fill='x')
                 btn = TagButton(task, text='X', tag=i, bg='black',
                                 fg='white', font='bold')
-                btn.bind('<Button-1>', lambda e: self.start_delete_todo(e))
+                btn.bind('<Button-1>', lambda e: self.start(e=e, method='delete_todo'))
                 btn.pack(side='right')
                 task.pack(fill='x')
 
@@ -234,7 +233,7 @@ class Application(tk.Frame):
 
         self.todo.set('')
         self.check.set(0)
-        self.btn_create.config(text='Create', command=self.start_create_todo)
+        self.btn_create.config(text='Create', command=lambda: self.start(test=True, method='create_todo'))
 
         self.toggle_spinner()
         self.get_todos()
