@@ -49,7 +49,7 @@ class Application(tk.Frame):
                  textvariable=self.todo, relief=tk.SUNKEN,
                  bd=10, font=self.normal_Font).pack(side='left', fill='x')
         self.btn_create = tk.Button(self.form_frame, text='Create',
-                                    command=lambda: self.start(test=True, method='create_todo'),
+                                    command=lambda: self.start(method='create'),
                                     bg='lightblue',
                                     relief=tk.RAISED, bd=4,
                                     font=self.normal_Font)
@@ -75,7 +75,7 @@ class Application(tk.Frame):
         self.status_frame.pack(side='bottom', fill='x')
 
         # --------------Load todos---------------------
-        self.after(500, self.start(method='get_todos'))
+        self.after(500, self.start(method='get'))
 
     # -----------------Service methods-------------------------
     def toggle_spinner(self):
@@ -119,24 +119,34 @@ class Application(tk.Frame):
         self.check.set(updated_todo['completed'])
         self.todo.set(updated_todo['title'])
         self.todo_id = (updated_todo['id'])
-        self.btn_create.config(text='Update', command=lambda: self.start(test=True, method='update_todo'))
+        self.btn_create.config(text='Update', command=lambda: self.start(method='update'))
 
         for i in self.scrollFrame.viewPort.winfo_children():
             for j in i.winfo_children():
                 if isinstance(j, TagButton):
                     j.forget()
 
-    # ----------------Start for CRUD methods---------------------
-    def start(self, test=False, method='get_todos', e=None):
-        if test:
-            if self.todo.get() != '':
-                threading.Thread(target=getattr(self, method)).start()
-        else:
-            if e:
-                threading.Thread(target=getattr(self, method),
-                                 args=[e]).start()
-            else:
-                threading.Thread(target=getattr(self, method)).start()
+    # ----------------Start for thread methods---------------------
+    def start(self, method='get', e=None):
+        data = {
+            'title': self.todo.get(),
+            'completed': bool(self.check.get())
+        }
+        if method == 'get':
+            self.toggle_spinner()
+            self.do_request()
+
+        elif method == 'create':
+            if data['title']:
+                self.do_request('post', query='create/', data=data)
+
+        elif method == 'update':
+            if data['title']:
+                self.do_request('put', query=f'{self.todo_id}/update/', data=data)
+        
+        elif method == 'delete':
+            self.todo_id = self.current_todos[e.widget.tag]['id']
+            self.do_request('delete', query=f'{self.todo_id}/delete/')
 
     # ----------------------Thread methods------------------------
     def do_request(self, method='get', query='', data={}):
@@ -162,99 +172,56 @@ class Application(tk.Frame):
         self.thread_flag = True
         self.get_status(self.status)
         self.status = None
+        request_method = data[2]
 
-    # ---------------------CRUD methods---------------------------
-    def get_todos(self):
-        self.toggle_spinner()
-        self.do_request('get')
+        if request_method == 'get':
+            if self.todos:
+                for widget in self.scrollFrame.viewPort.winfo_children():
+                    widget.destroy()
 
-        while True:
-            if self.thread_flag:
-                self.thread_flag = False
-                break
+                for i, todo in enumerate(self.todos):
+                    task = tk.Frame(self.scrollFrame.viewPort, bg='lightblue',
+                                    relief=tk.SUNKEN, bd=10)
+                    text = TagMessage(task, text=todo['title'],
+                                      justify='center',
+                                      width=300, tag=i, pady=10,
+                                      bg='lightblue')
+                    if todo['completed']:
+                        text.configure(font=self.strike_Font)
+                    else:
+                        text.configure(font=self.normal_Font)
+                    text.bind('<Button-1>', self.prepare_update)
+                    text.pack(side='left', fill='x')
+                    btn = TagButton(task, text='X', tag=i, bg='black',
+                                    fg='white', font='bold')
+                    btn.bind('<Button-1>', lambda e: self.start(e=e, method='delete'))
+                    btn.pack(side='right')
+                    task.pack(fill='x')
 
-        if self.todos:
-            for widget in self.scrollFrame.viewPort.winfo_children():
-                widget.destroy()
-            for i, todo in enumerate(self.todos):
-                task = tk.Frame(self.scrollFrame.viewPort, bg='lightblue',
-                                relief=tk.SUNKEN, bd=10)
-                text = TagMessage(task, text=todo['title'], justify='center',
-                                  width=300, tag=i, pady=10, bg='lightblue')
-                if todo['completed']:
-                    text.configure(font=self.strike_Font)
-                else:
-                    text.configure(font=self.normal_Font)
-                text.bind('<Button-1>', self.prepare_update)
-                text.pack(side='left', fill='x')
-                btn = TagButton(task, text='X', tag=i, bg='black',
-                                fg='white', font='bold')
-                btn.bind('<Button-1>', lambda e: self.start(e=e, method='delete_todo'))
-                btn.pack(side='right')
-                task.pack(fill='x')
+                self.current_todos = self.todos
+                self.todos = None
 
-            self.current_todos = self.todos
-            self.todos = None
+            self.scrollFrame.pack()
+            self.toggle_spinner()
 
-        self.scrollFrame.pack()
-        self.toggle_spinner()
+        elif request_method == 'post':
+            self.todo.set('')
 
-    def create_todo(self):
-        self.toggle_spinner()
-        data = {
-            'title': self.todo.get(),
-            'completed': bool(self.check.get())
-        }
-        self.do_request('post', query='create/', data=data)
+            if self.todos:
+                self.start(method='get')
 
-        while True:
-            if self.thread_flag:
-                self.thread_flag = False
-                break
+        elif request_method == 'put':
+            self.todo.set('')
+            self.check.set(0)
+            self.btn_create.config(text='Create', command=lambda: self.start(method='create'))
+            self.start(method='get')
 
-        self.todo.set('')
-        self.toggle_spinner()
-
-        if self.todos:
-            self.get_todos()
-
-    def update_todo(self):
-        self.toggle_spinner()
-        data = {
-            'title': self.todo.get(),
-            'completed': bool(self.check.get())
-        }
-        self.do_request('put', query=f'{self.todo_id}/update/', data=data)
-
-        while True:
-            if self.thread_flag:
-                self.thread_flag = False
-                break
-
-        self.todo.set('')
-        self.check.set(0)
-        self.btn_create.config(text='Create', command=lambda: self.start(test=True, method='create_todo'))
-
-        self.toggle_spinner()
-        self.get_todos()
-
-        for i in self.scrollFrame.viewPort.winfo_children():
-            for j in i.winfo_children():
-                if isinstance(j, TagButton):
-                    j.pack()
-
-    def delete_todo(self, e):
-        self.toggle_spinner()
-        self.todo_id = self.current_todos[e.widget.tag]['id']
-        self.do_request('delete', query=f'{self.todo_id}/delete/')
-
-        while True:
-            if self.thread_flag:
-                self.thread_flag = False
-                break
-
-        self.toggle_spinner()
-        self.get_todos()
+            for i in self.scrollFrame.viewPort.winfo_children():
+                for j in i.winfo_children():
+                    if isinstance(j, TagButton):
+                        j.pack()
+        elif data[2] == 'delete':
+            self.start(method='get')
 
 
 if __name__ == '__main__':

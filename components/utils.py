@@ -17,10 +17,10 @@ class SaveThread(threading.Thread):
             try:
                 run_original()
             except Exception as e:
-                data = (self.url, 'with error {}'.format(e))
+                data = (self.url, 'with error {}'.format(e), self.method)
                 self.callback(data)
             else:
-                data = (self.url, 'successful')
+                data = (self.url, 'successful', self.method)
                 self.callback(data)
 
         self.run = run_with_except_hook
