@@ -49,7 +49,7 @@ class Application(tk.Frame):
                  textvariable=self.todo, relief=tk.SUNKEN,
                  bd=10, font=self.normal_Font).pack(side='left', fill='x')
         self.btn_create = tk.Button(self.form_frame, text='Create',
-                                    command=lambda: self.start(method='create'),
+                                    command=lambda: self.start(method='post'),
                                     bg='lightblue',
                                     relief=tk.RAISED, bd=4,
                                     font=self.normal_Font)
@@ -119,7 +119,8 @@ class Application(tk.Frame):
         self.check.set(updated_todo['completed'])
         self.todo.set(updated_todo['title'])
         self.todo_id = (updated_todo['id'])
-        self.btn_create.config(text='Update', command=lambda: self.start(method='update'))
+        self.btn_create.config(text='Update',
+                               command=lambda: self.start(method='put'))
 
         for i in self.scrollFrame.viewPort.winfo_children():
             for j in i.winfo_children():
@@ -128,41 +129,47 @@ class Application(tk.Frame):
 
     # ----------------Start for thread methods---------------------
     def start(self, method='get', e=None):
+        flag = False
         data = {
             'title': self.todo.get(),
             'completed': bool(self.check.get())
         }
+        query = ''
         if method == 'get':
             self.toggle_spinner()
-            self.do_request()
+            flag = True
+            data = {}
 
-        elif method == 'create':
+        elif method == 'post':
             if data['title']:
-                self.do_request('post', query='create/', data=data)
+                flag = True
+                query = 'create/'
 
-        elif method == 'update':
+        elif method == 'put':
             if data['title']:
-                self.do_request('put', query=f'{self.todo_id}/update/', data=data)
-        
+                flag = True
+                query = f'{self.todo_id}/update/'
+
         elif method == 'delete':
             self.todo_id = self.current_todos[e.widget.tag]['id']
-            self.do_request('delete', query=f'{self.todo_id}/delete/')
+            flag = True
+            query = f'{self.todo_id}/delete/'
+            data = {}
 
-    # ----------------------Thread methods------------------------
-    def do_request(self, method='get', query='', data={}):
         params = {
             'method': method,
-            'query': query,
             'data': data,
-            'num': self.endpoint + query
+            'url': self.endpoint + query
         }
-        SaveThread(self.on_thread_finished,
-                   target=self.request_thread,
-                   kwargs=params).start()
+        if flag:
+            SaveThread(self.on_thread_finished,
+                       target=self.request_thread,
+                       kwargs=params).start()
 
+    # ----------------------Thread methods------------------------
     def request_thread(self, **kwargs):
         response = requests.request(kwargs['method'],
-                                    self.endpoint + kwargs['query'],
+                                    kwargs['url'],
                                     data=kwargs.get('data'))
         self.status = response.status_code
         if len(response.text) > 0:
@@ -213,7 +220,7 @@ class Application(tk.Frame):
         elif request_method == 'put':
             self.todo.set('')
             self.check.set(0)
-            self.btn_create.config(text='Create', command=lambda: self.start(method='create'))
+            self.btn_create.config(text='Create', command=lambda: self.start(method='post'))
             self.start(method='get')
 
             for i in self.scrollFrame.viewPort.winfo_children():
