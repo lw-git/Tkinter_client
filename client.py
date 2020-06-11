@@ -19,7 +19,6 @@ class Application(tk.Frame):
         self.todos = None
         self.todo = tk.StringVar()
         self.todo.trace("w", lambda *args: self.character_limit())
-        self.thread_flag = False
         self.current_todos = None
         self.status = None
 
@@ -125,9 +124,9 @@ class Application(tk.Frame):
         for i in self.scrollFrame.viewPort.winfo_children():
             for j in i.winfo_children():
                 if isinstance(j, TagButton):
-                    j.forget()
+                    j.destroy()
 
-    # ----------------Start for thread methods---------------------
+    # ----------------------Thread methods------------------------
     def start(self, method='get', e=None):
         flag = False
         data = {
@@ -166,7 +165,6 @@ class Application(tk.Frame):
                        target=self.request_thread,
                        kwargs=params).start()
 
-    # ----------------------Thread methods------------------------
     def request_thread(self, **kwargs):
         response = requests.request(kwargs['method'],
                                     kwargs['url'],
@@ -176,7 +174,6 @@ class Application(tk.Frame):
             self.todos = response.json()
 
     def on_thread_finished(self, data):
-        self.thread_flag = True
         self.get_status(self.status)
         self.status = None
         request_method = data[2]
@@ -208,6 +205,29 @@ class Application(tk.Frame):
                 self.current_todos = self.todos
                 self.todos = None
 
+            elif self.current_todos:
+                for widget in self.scrollFrame.viewPort.winfo_children():
+                    widget.destroy()
+
+                for i, todo in enumerate(self.current_todos):
+                    task = tk.Frame(self.scrollFrame.viewPort, bg='lightblue',
+                                    relief=tk.SUNKEN, bd=10)
+                    text = TagMessage(task, text=todo['title'],
+                                      justify='center',
+                                      width=300, tag=i, pady=10,
+                                      bg='lightblue')
+                    if todo['completed']:
+                        text.configure(font=self.strike_Font)
+                    else:
+                        text.configure(font=self.normal_Font)
+                    text.bind('<Button-1>', self.prepare_update)
+                    text.pack(side='left', fill='x')
+                    btn = TagButton(task, text='X', tag=i, bg='black',
+                                    fg='white', font='bold')
+                    btn.bind('<Button-1>', lambda e: self.start(e=e, method='delete'))
+                    btn.pack(side='right')
+                    task.pack(fill='x')
+
             self.scrollFrame.pack()
             self.toggle_spinner()
 
@@ -220,13 +240,10 @@ class Application(tk.Frame):
         elif request_method == 'put':
             self.todo.set('')
             self.check.set(0)
-            self.btn_create.config(text='Create', command=lambda: self.start(method='post'))
+            self.btn_create.config(text='Create',
+                                   command=lambda: self.start(method='post'))
             self.start(method='get')
 
-            for i in self.scrollFrame.viewPort.winfo_children():
-                for j in i.winfo_children():
-                    if isinstance(j, TagButton):
-                        j.pack()
         elif data[2] == 'delete':
             self.start(method='get')
 
