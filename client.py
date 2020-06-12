@@ -126,6 +126,29 @@ class Application(tk.Frame):
                 if isinstance(j, TagButton):
                     j.destroy()
 
+    def show_list(self, todos):
+        for widget in self.scrollFrame.viewPort.winfo_children():
+            widget.destroy()
+
+        for i, todo in enumerate(self.todos):
+            task = tk.Frame(self.scrollFrame.viewPort, bg='lightblue',
+                            relief=tk.SUNKEN, bd=10)
+            text = TagMessage(task, text=todo['title'],
+                              justify='center',
+                              width=300, tag=i, pady=10,
+                              bg='lightblue')
+            if todo['completed']:
+                text.configure(font=self.strike_Font)
+            else:
+                text.configure(font=self.normal_Font)
+            text.bind('<Button-1>', self.prepare_update)
+            text.pack(side='left', fill='x')
+            btn = TagButton(task, text='X', tag=i, bg='black',
+                            fg='white', font='bold')
+            btn.bind('<Button-1>', lambda e: self.start(e=e, method='delete'))
+            btn.pack(side='right')
+            task.pack(fill='x')
+
     # ----------------------Thread methods------------------------
     def start(self, method='get', e=None):
         flag = False
@@ -180,53 +203,12 @@ class Application(tk.Frame):
 
         if request_method == 'get':
             if self.todos:
-                for widget in self.scrollFrame.viewPort.winfo_children():
-                    widget.destroy()
-
-                for i, todo in enumerate(self.todos):
-                    task = tk.Frame(self.scrollFrame.viewPort, bg='lightblue',
-                                    relief=tk.SUNKEN, bd=10)
-                    text = TagMessage(task, text=todo['title'],
-                                      justify='center',
-                                      width=300, tag=i, pady=10,
-                                      bg='lightblue')
-                    if todo['completed']:
-                        text.configure(font=self.strike_Font)
-                    else:
-                        text.configure(font=self.normal_Font)
-                    text.bind('<Button-1>', self.prepare_update)
-                    text.pack(side='left', fill='x')
-                    btn = TagButton(task, text='X', tag=i, bg='black',
-                                    fg='white', font='bold')
-                    btn.bind('<Button-1>', lambda e: self.start(e=e, method='delete'))
-                    btn.pack(side='right')
-                    task.pack(fill='x')
-
+                self.show_list(self.todos)
                 self.current_todos = self.todos
                 self.todos = None
 
             elif self.current_todos:
-                for widget in self.scrollFrame.viewPort.winfo_children():
-                    widget.destroy()
-
-                for i, todo in enumerate(self.current_todos):
-                    task = tk.Frame(self.scrollFrame.viewPort, bg='lightblue',
-                                    relief=tk.SUNKEN, bd=10)
-                    text = TagMessage(task, text=todo['title'],
-                                      justify='center',
-                                      width=300, tag=i, pady=10,
-                                      bg='lightblue')
-                    if todo['completed']:
-                        text.configure(font=self.strike_Font)
-                    else:
-                        text.configure(font=self.normal_Font)
-                    text.bind('<Button-1>', self.prepare_update)
-                    text.pack(side='left', fill='x')
-                    btn = TagButton(task, text='X', tag=i, bg='black',
-                                    fg='white', font='bold')
-                    btn.bind('<Button-1>', lambda e: self.start(e=e, method='delete'))
-                    btn.pack(side='right')
-                    task.pack(fill='x')
+                self.show_list(self.current_todos)
 
             self.scrollFrame.pack()
             self.toggle_spinner()
