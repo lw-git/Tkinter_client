@@ -113,18 +113,26 @@ class Application(tk.Frame):
         if len(self.todo.get()) > 200:
             self.todo.set(self.todo.get()[:200])
 
-    def prepare_update(self, e):
-        updated_todo = self.current_todos[e.widget.tag]
-        self.check.set(updated_todo['completed'])
-        self.todo.set(updated_todo['title'])
-        self.todo_id = (updated_todo['id'])
-        self.btn_create.config(text='Update',
-                               command=lambda: self.start(method='put'))
+    def prepare_update(self, e, widget='frame'):
+        tag = None
+        if widget == 'message':
+            tag = e.widget.tag
+        else:
+            for widget in e.widget.winfo_children():
+                if isinstance(widget, TagMessage):
+                    tag = widget.tag
 
-        for i in self.scrollFrame.viewPort.winfo_children():
-            for j in i.winfo_children():
-                if isinstance(j, TagButton):
-                    j.destroy()
+        if tag is not None:
+            self.check.set(self.current_todos[tag]['completed'])
+            self.todo.set(self.current_todos[tag]['title'])
+            self.todo_id = (self.current_todos[tag]['id'])
+            self.btn_create.config(text='Update',
+                                   command=lambda: self.start(method='put'))
+
+            for i in self.scrollFrame.viewPort.winfo_children():
+                for j in i.winfo_children():
+                    if isinstance(j, TagButton):
+                        j.destroy()
 
     def show_list(self, todos):
         for widget in self.scrollFrame.viewPort.winfo_children():
@@ -133,6 +141,7 @@ class Application(tk.Frame):
         for i, todo in enumerate(self.todos):
             task = tk.Frame(self.scrollFrame.viewPort, bg='lightblue',
                             relief=tk.SUNKEN, bd=10)
+            task.bind('<Button-1>', self.prepare_update)
             text = TagMessage(task, text=todo['title'],
                               justify='center',
                               width=300, tag=i, pady=10,
@@ -141,7 +150,8 @@ class Application(tk.Frame):
                 text.configure(font=self.strike_Font)
             else:
                 text.configure(font=self.normal_Font)
-            text.bind('<Button-1>', self.prepare_update)
+            text.bind('<Button-1>',
+                      lambda e: self.prepare_update(e=e, widget='message'))
             text.pack(side='left', fill='x')
             btn = TagButton(task, text='X', tag=i, bg='black',
                             fg='white', font='bold')
@@ -226,7 +236,7 @@ class Application(tk.Frame):
                                    command=lambda: self.start(method='post'))
             self.start(method='get')
 
-        elif data[2] == 'delete':
+        elif request_method == 'delete':
             self.start(method='get')
 
 
